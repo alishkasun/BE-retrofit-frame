@@ -41,24 +41,25 @@ public class CategoriesTests extends BaseTest {
 
     }
 
-
     //Проверка на несущестаующую категорию.
+
     @ParameterizedTest
-    @EnumSource(value = ru.geekbrains.enums.Invalid.class, names = {"INVALID"})
+    @EnumSource(value = ru.geekbrains.enums.Invalid.class)
     void getInvalidCategoryTest(ru.geekbrains.enums.Invalid invalid) throws IOException {
         Response<InvalidCategory> response = invalidService
                 .getInvalidCategory(invalid.getId())
                 .execute();
         ResponseBody responseBody = response.errorBody();
-//
-//        assertThat(responseBody).isNotNull();
-//        assertThat(responseBody).isEqualTo(invalid.getName());
-
+        //Создаем клиент и возвращаем объект
         var invalidCategory = objectMapper.readValue(responseBody.bytes(), InvalidCategory.class);
-        assertThat(responseBody).isEqualTo(invalid.getName());
-        assertThat(responseBody).isNotNull();
-        assertThat(responseBody).isEqualTo(invalidCategory.getStatus());
-
+        // проверка на status = 404
+        // 1. Берем статус из ответа
+        var expectedStatus = invalidCategory.getStatus();
+        // 2. проверк 404
+        assertThat(expectedStatus).isEqualTo(404);
+        //проверяем massage
+        var expectedMassage = invalidCategory.getMessage();
+        assertThat(expectedMassage).isEqualTo(invalid.getMessage());
     }
 
 }

@@ -6,7 +6,6 @@ public enum Product {
     FOOD(11329, "Ebiten maki");
 
 
-
     @Getter
     private Integer id;
     @Getter

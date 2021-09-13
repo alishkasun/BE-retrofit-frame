@@ -1,52 +1,78 @@
 package ru.geekbrains.tests;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import okhttp3.ResponseBody;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import retrofit2.Response;
+import ru.geekbrains.dto.InvalidProduct;
 import ru.geekbrains.dto.Product;
 import ru.geekbrains.enums.Category;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.not;
 
 public class ProductsTest extends BaseTest {
-    Product product;
-    Product product_invalid;
-    Integer id;
+    ObjectMapper objectMapper = new ObjectMapper();
 
-    @BeforeEach
-    void setUp() {
-       product=  new Product()
+    private int deleteId;
+    private int idForDelet;
+
+    private Product createProduct() {
+       return new Product()
                 .withTitle(faker.food().dish())
                 .withCategoryTitle(Category.FOOD.getName())
                 .withPrice(1000);
     }
 
-    // Отправка запроса с валидными данными.
+
+       // Отправка POST запроса с валидными данными.
     @Test
     void createProductWithIntPriceTest() throws IOException {
-
+        var product = createProduct();
         Response<Product> response = productService
                 .createProduct(product)
                 .execute();
-        id = response.body().getId();
+
+        deleteId = response.body().getId();
+
         assertThat(response.body().getCategoryTitle()).isEqualTo(product.getCategoryTitle());
         assertThat(response.body().getTitle()).isEqualTo(product.getTitle());
         assertThat(response.body().getPrice()).isEqualTo(product.getPrice());
         assertThat(response.body().getId()).isNotNull();
     }
 
-//Не валидный title
+
+    //Получение данных по существующему id GET products/id
+//    {
+//        "id": 11329,
+//            "title": "Ebiten maki",
+//            "price": 196,
+//            "categoryTitle": "Food"
+//    }
+    @Test
+    void getFoodProductTest() throws IOException {
+        Response<Product> response = productService
+                .getProduct(11329)
+                .execute();
+        //проверяем title
+        assertThat(response.body().getTitle()).isEqualTo("Ebiten maki");
+        // проверяем на ответ 200
+        assertThat(response.code()).isEqualTo(200);
+        //проверяем "price": 196
+        assertThat(response.body().getPrice()).isNotZero();
+    }
+
+
+    //Проверка на несуществующую катеогию 5.
     @Test
     void createProductWithInvalidTitleTest() throws IOException {
-
-        product_invalid = new Product()
+        var product_invalid = new Product()
                 .withTitle(faker.food().dish())
                 .withCategoryTitle(Category.INVALID_TITLE.getName())
                 .withPrice(-1000);
@@ -54,119 +80,71 @@ public class ProductsTest extends BaseTest {
         Response<Product> response = productService
                 .createProduct(product_invalid)
                 .execute();
-        id = response.body().getId();
-        assertThat(response.errorBody()).isNotEqualTo(product.getCategoryTitle() );
 
+        Optional.ofNullable(response.body()).ifPresent(body -> {
+            deleteId = body.getId();
+        });
+        assertThat(response.errorBody()).isNotNull();
     }
 
-    //Получение данных по существующему id
+    //Проверка получение несуществующего продукта.
+
     @ParameterizedTest
-    @EnumSource(value = ru.geekbrains.enums.Product.class)
-    void getFoodProductTest(ru.geekbrains.enums.Product product) throws IOException {
-
-        Response<Product> response = productService
-                .getProduct(product.getId())
+    @EnumSource(value = ru.geekbrains.enums.InvalidP.class)
+    void getInvalidProductTest(ru.geekbrains.enums.InvalidP invalidP) throws IOException {
+        Response<InvalidProduct> response = invalidServiceProduct
+                .getInvalidProduct(invalidP.getId())
                 .execute();
-
-        assertThat(response.isSuccessful());
-        assertThat(response.body().getTitle()).isEqualTo(product.getName());
-        assertThat(response.body().getId()).isEqualTo(id);
+        ResponseBody responseBody = response.errorBody();
+        //Создаем клиент и возвращаем объект
+        var invalidProduct = objectMapper.readValue(responseBody.bytes(), InvalidProduct.class);
+        // проверка на status = 404
+        // 1. Берем статус из ответа
+        var expectedStatus = invalidProduct.getStatus();
+        // 2. проверк 404
+        assertThat(expectedStatus).isEqualTo(404);
+        //проверяем massage
+        var expectedMassage = invalidProduct.getMessage();
+        assertThat(expectedMassage).isEqualTo(invalidP.getMessage());
     }
+
+    //Удаление продукта - мне кажется удаление не происходит.
 
     @Test
-    void updateProductWithIntPriceTest() throws IOException {
-
+    void deletProducTest() throws IOException {
+        var product = createProduct();
         Response<Product> response = productService
                 .createProduct(product)
                 .execute();
-        id = response.body().getId();
+
+        idForDelet = response.body().getId();
+
+        Response<ResponseBody> responseBody = productService
+                .deleteProduct(idForDelet)
+                .execute();
+
+        assertThat(response.isSuccessful());
+
+    }
+
+
+    @Test
+    void updateProductWithIntPriceTest() throws IOException {
+        var product = createProduct();
+        Response<Product> response = productService
+                .createProduct(product)
+                .execute();
+
+        deleteId = response.body().getId();
+
         assertThat(response.body().getCategoryTitle()).isEqualTo(product.getCategoryTitle());
         assertThat(response.body().getTitle()).isEqualTo(product.getTitle());
         assertThat(response.body().getPrice()).isEqualTo(product.getPrice());
         assertThat(response.body().getId()).isNotNull();
     }
+
     @AfterEach
     void tearDown() throws IOException {
-        productService.deleteProduct(id).execute();
+        productService.deleteProduct(deleteId).execute();
     }
 }
-
-
-///**
-// * API tests for ProductControllerApi
-// */
-//public class ProductControllerApiTest {
-//
-//    private ProductControllerApi api;
-//
-//    @Before
-//    public void setup() {
-//        api = new ApiClient().createService(ProductControllerApi.class);
-//    }
-//
-//
-//    /**
-//     * Creates a new product. If id !&#x3D; null, then throw bad request response
-//     *
-//     *
-//     */
-//    @Test
-//    public void createNewProductUsingPOSTTest() {
-//        ProductDto p = null;
-//        // Object response = api.createNewProductUsingPOST(p);
-//
-//        // TODO: test validations
-//    }
-//
-//    /**
-//     * Delete product
-//     *
-//     *
-//     */
-//    @Test
-//    public void deleteByIdUsingDELETETest() {
-//        Long id = null;
-//        // api.deleteByIdUsingDELETE(id);
-//
-//        // TODO: test validations
-//    }
-//
-//    /**
-//     * Returns a specific product by their identifier. 404 if does not exist.
-//     *
-//     *
-//     */
-//    @Test
-//    public void getProductByIdUsingGETTest() {
-//        Long id = null;
-//        // ProductDto response = api.getProductByIdUsingGET(id);
-//
-//        // TODO: test validations
-//    }
-//
-//    /**
-//     * Returns products
-//     *
-//     *
-//     */
-//    @Test
-//    public void getProductsUsingGETTest() {
-//        // List<ProductDto> response = api.getProductsUsingGET();
-//
-//        // TODO: test validations
-//    }
-//
-//    /**
-//     * Modify product
-//     *
-//     *
-//     */
-//    @Test
-//    public void modifyProductUsingPUTTest() {
-//        ProductDto p = null;
-//        // Object response = api.modifyProductUsingPUT(p);
-//
-//        // TODO: test validations
-//    }
-//
-//}

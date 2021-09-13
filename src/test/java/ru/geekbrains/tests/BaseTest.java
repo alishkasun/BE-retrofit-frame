@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeAll;
 import retrofit2.Retrofit;
 import ru.geekbrains.service.CategoryService;
 import ru.geekbrains.service.InvalidService;
+import ru.geekbrains.service.InvalidServiceProduct;
 import ru.geekbrains.service.ProductService;
 import ru.geekbrains.utils.RetrofitUtils;
 
@@ -13,6 +14,7 @@ public class BaseTest {
     static CategoryService categoryService;
     static InvalidService invalidService;
     static ProductService productService;
+    static InvalidServiceProduct invalidServiceProduct;
     static Faker faker;
 
     @BeforeAll
@@ -22,5 +24,6 @@ public class BaseTest {
         productService = retrofit.create(ProductService.class);
         faker = new Faker();
         invalidService = retrofit.create(InvalidService.class);
+        invalidServiceProduct = retrofit.create(InvalidServiceProduct.class);
     }
 }

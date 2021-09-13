@@ -16,7 +16,7 @@ public interface ProductService {
     @GET("products/{id}")
     Call<Product> getProduct(@Path("id") int id);
 
-    @GET("products/{id}")
+    @GET("products")
     Call<Product> getProduct(@Path("id") Integer id);
 }
 
