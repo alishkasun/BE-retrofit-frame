@@ -1,12 +1,17 @@
 package ru.geekbrains.tests;
-
+import lombok.extern.slf4j.Slf4j;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.ResponseBody;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import retrofit2.Response;
+import ru.geekbrains.db.dao.ProductsMapper;
+import ru.geekbrains.db.model.Products;
+import ru.geekbrains.db.model.ProductsExample;
 import ru.geekbrains.dto.InvalidProduct;
 import ru.geekbrains.dto.Product;
 import ru.geekbrains.enums.Category;
@@ -16,21 +21,27 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.not;
-
+@Slf4j
 public class ProductsTest extends BaseTest {
     ObjectMapper objectMapper = new ObjectMapper();
 
     private int deleteId;
     private int idForDelet;
 
+//    Для testCategory
+//    private Product createProduct() {
+//       return new Product()
+//                .withTitle(faker.food().dish())
+//                .withCategoryTitle(testCategory.getTitle())
+//                .withPrice(1000);
+//    }
+
     private Product createProduct() {
-       return new Product()
+        return new Product()
                 .withTitle(faker.food().dish())
                 .withCategoryTitle(Category.FOOD.getName())
                 .withPrice(1000);
     }
-
-
        // Отправка POST запроса с валидными данными.
     @Test
     void createProductWithIntPriceTest() throws IOException {
@@ -45,7 +56,14 @@ public class ProductsTest extends BaseTest {
         assertThat(response.body().getTitle()).isEqualTo(product.getTitle());
         assertThat(response.body().getPrice()).isEqualTo(product.getPrice());
         assertThat(response.body().getId()).isNotNull();
-    }
+        //выделить в отдельный метод
+        ProductsExample example = new ProductsExample();
+        example.createCriteria().andCategory_idEqualTo(Long.valueOf(testCategory.getId())).andPriceEqualTo(1000);
+        Products productFromDb = productsMapper.selectByExample(example).get(0);
+        assertThat(productFromDb.getPrice()).isEqualTo(product.getPrice());
+
+        example.createCriteria().andPriceEqualTo(1000);
+        productsMapper.deleteByExample(example); }
 
 
     //Получение данных по существующему id GET products/id
@@ -55,6 +73,7 @@ public class ProductsTest extends BaseTest {
 //            "price": 196,
 //            "categoryTitle": "Food"
 //    }
+
     @Test
     void getFoodProductTest() throws IOException {
         Response<Product> response = productService
@@ -66,6 +85,13 @@ public class ProductsTest extends BaseTest {
         assertThat(response.code()).isEqualTo(200);
         //проверяем "price": 196
         assertThat(response.body().getPrice()).isNotZero();
+
+        productsMapper.selectByPrimaryKey(11329l);
+        ProductsExample example = new ProductsExample();
+        example.createCriteria().andIdEqualTo((long) 11329).andTitleEqualTo("Ebiten maki");
+
+
+
     }
 
 
@@ -85,6 +111,11 @@ public class ProductsTest extends BaseTest {
             deleteId = body.getId();
         });
         assertThat(response.errorBody()).isNotNull();
+
+        ProductsExample example = new ProductsExample();
+        example.createCriteria().andCategory_idEqualTo(Long.valueOf(Category.INVALID_TITLE.getName())).andPriceEqualTo(-1000);
+        assertThat(response.errorBody()).isNotNull();
+
     }
 
     //Проверка получение несуществующего продукта.
@@ -106,6 +137,7 @@ public class ProductsTest extends BaseTest {
         //проверяем massage
         var expectedMassage = invalidProduct.getMessage();
         assertThat(expectedMassage).isEqualTo(invalidP.getMessage());
+
     }
 
     //Удаление продукта - мне кажется удаление не происходит.
@@ -126,7 +158,6 @@ public class ProductsTest extends BaseTest {
         assertThat(response.isSuccessful());
 
     }
-
 
     @Test
     void updateProductWithIntPriceTest() throws IOException {
