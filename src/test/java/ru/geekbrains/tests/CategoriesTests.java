@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import retrofit2.Response;
+import ru.geekbrains.db.model.ProductsExample;
 import ru.geekbrains.dto.Category;
 import ru.geekbrains.dto.InvalidCategory;
 import ru.geekbrains.dto.Product;
@@ -39,6 +40,7 @@ public class CategoriesTests extends BaseTest {
 ////            System.out.println(response.errorBody().string());
 //        }
 
+
     }
 
     //Проверка на несущестаующую категорию.
@@ -60,6 +62,8 @@ public class CategoriesTests extends BaseTest {
         //проверяем massage
         var expectedMassage = invalidCategory.getMessage();
         assertThat(expectedMassage).isEqualTo(invalid.getMessage());
+
+
     }
 
 }
